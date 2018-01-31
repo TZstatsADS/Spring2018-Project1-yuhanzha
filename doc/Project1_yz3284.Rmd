@@ -1,0 +1,519 @@
+---
+title: "Applied Data Science Project-1"
+output: html_notebook
+---
+
+### Presidential inaugural addresses shows signs of time
+
+When the incoming President exalts the nation and its values, presidential inaugural addresses are the best stage to tell people where they have come from, and where they are going to achieve. This project is tended to analyze all of the inaugural addresses U.S. presidents have ever made and catch up some trends and stories that fall in the data.
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+# Load the libraries
+packages.used=c("rvest", "tibble", "qdap", 
+                "sentimentr", "gplots", "dplyr",
+                "tm", "syuzhet", "factoextra", 
+                "beeswarm", "scales", "RColorBrewer",
+                "RANN", "tm", "topicmodels")
+
+# check packages that need to be installed.
+packages.needed=setdiff(packages.used, 
+                        intersect(installed.packages()[,1], 
+                                  packages.used))
+# install additional packages
+if(length(packages.needed)>0){
+  install.packages(packages.needed, dependencies = TRUE)
+}
+
+# load packages
+library("rvest")
+library("tibble")
+library("qdap")
+library("sentimentr")
+library("gplots")
+library("dplyr")
+library("tm")
+library("syuzhet")
+library("factoextra")
+library("beeswarm")
+library("scales")
+library("RColorBrewer")
+library("RANN")
+library("tm")
+library("topicmodels")
+
+library("tidytext")
+library("lubridate")
+library("scales")
+library("wordcloud")
+library("cleanNLP")
+library("reticulate")
+library("grid")
+library("gridExtra")
+```
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+### Inauguaral speeches
+main.page <- read_html(x = "http://www.presidency.ucsb.edu/inaugurals.php")
+# Get link URLs
+# f.speechlinks is a function for extracting links from the list of speeches. 
+inaug=f.speechlinks(main.page)
+#head(inaug)
+inaug=inaug[-nrow(inaug),] # remove the last line, irrelevant due to error.
+u <- as.Date(inaug[,1], format="%B %e, %Y")
+```
+
+```{r, echo=FALSE}
+inaug.list=read.csv("../data/InaugurationInfo.csv", stringsAsFactors = FALSE)
+age.list=read.csv("../data/age.csv", stringsAsFactors = FALSE)
+```
+
+```{r, echo=FALSE}
+speech.list=cbind(inaug.list, u,inaug)
+names(speech.list)[names(speech.list)=="links"] <- "Date"
+names(speech.list)[names(speech.list)=="u"] <- "Year"
+speech.list$Words[58] <- 1433
+
+```
+
+```{r, echo=FALSE}
+# Loop over each row in speech.list
+speech.list$fulltext=NA
+for(i in seq(nrow(speech.list))) {
+  text <- read_html(speech.list$urls[i]) %>% # load the page
+    html_nodes(".displaytext") %>% # isloate the text
+    html_text() # get the text
+  speech.list$fulltext[i]=text
+  # Create the file name
+  filename <- paste0("../data/InauguralSpeeches/", 
+                     speech.list$type[i],
+                     speech.list$File[i], "-", 
+                     speech.list$Term[i], ".txt")
+  sink(file = filename) %>% # open file to write 
+  cat(text)  # write the file
+  sink() # close the file
+}
+```
+
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+
+# Data Pre-pocessing
+sentence.list=NULL
+for(i in 1:nrow(speech.list)){
+  sentences=sent_detect(speech.list$fulltext[i],
+                        endmarks = c("?", ".", "!", "|",";"))
+  if(length(sentences)>0){
+    emotions=get_nrc_sentiment(sentences)
+    word.count=word_count(sentences)
+    emotions=diag(1/(word.count+0.01))%*%as.matrix(emotions)
+    sentence.list=rbind(sentence.list, 
+                        cbind(speech.list[i,-ncol(speech.list)],
+                              sentences=as.character(sentences), 
+                              word.count,
+                              emotions,
+                              sent.id=1:length(sentences)
+                              )
+    )
+  }
+}
+```
+
+```{r, echo=FALSE}
+sentence.list=
+  sentence.list%>%
+  filter(!is.na(word.count)) 
+```
+
+
+```{r, echo=FALSE}
+# get the corpus
+corpus.list=sentence.list[2:(nrow(sentence.list)-1), ]
+sentence.pre=sentence.list$sentences[1:(nrow(sentence.list)-2)]
+sentence.post=sentence.list$sentences[3:(nrow(sentence.list)-1)]
+corpus.list$snipets=paste(sentence.pre, corpus.list$sentences, sentence.post, sep=" ")
+rm.rows=(1:nrow(corpus.list))[corpus.list$sent.id==1]
+rm.rows=c(rm.rows, rm.rows-1)
+corpus.list=corpus.list[-rm.rows, ]
+```
+
+```{r, echo=FALSE}
+# Seperate data by Party
+dem.list <- na.omit(corpus.list[corpus.list$Party == "Democratic",])
+rep.list <- na.omit(corpus.list[corpus.list$Party == "Republican",])
+dem.list2 <- na.omit(speech.list[speech.list$Party == "Democratic",])
+rep.list2 <- na.omit(speech.list[speech.list$Party == "Republican",])
+dem.list3 <- na.omit(sentence.list[sentence.list$Party == "Democratic",])
+rep.list3 <- na.omit(sentence.list[sentence.list$Party == "Republican",])
+```
+
+```{r, echo=FALSE}
+docs <- Corpus(VectorSource(corpus.list$snipets))
+dem.docs <- Corpus(VectorSource(dem.list$snipets))
+rep.docs <- Corpus(VectorSource(rep.list$snipets))
+```
+### Text basic processing
+
+```{r, echo=FALSE}
+#remove potentially problematic symbols
+docs <-tm_map(docs,content_transformer(tolower))
+dem.docs <-tm_map(dem.docs,content_transformer(tolower))
+rep.docs <-tm_map(rep.docs,content_transformer(tolower))
+#remove punctuation
+docs <- tm_map(docs, removePunctuation)
+dem.docs <- tm_map(dem.docs, removePunctuation)
+rep.docs <- tm_map(rep.docs, removePunctuation)
+#Strip digits
+docs <- tm_map(docs, removeNumbers)
+dem.docs <- tm_map(dem.docs, removeNumbers)
+rep.docs <- tm_map(rep.docs, removeNumbers)
+#remove stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+dem.docs <- tm_map(dem.docs, removeWords, stopwords("english"))
+rep.docs <- tm_map(rep.docs, removeWords, stopwords("english"))
+#remove whitespace
+docs <- tm_map(docs, stripWhitespace)
+dem.docs <- tm_map(dem.docs, stripWhitespace)
+rep.docs <- tm_map(rep.docs, stripWhitespace)
+#Stem document
+docs <- tm_map(docs,stemDocument)
+dem.docs <- tm_map(dem.docs,stemDocument)
+rep.docs <- tm_map(rep.docs,stemDocument)
+```
+
+```{r, echo=FALSE}
+dtm <- DocumentTermMatrix(docs)
+dem.dtm <- DocumentTermMatrix(dem.docs)
+rep.dtm <- DocumentTermMatrix(rep.docs)
+
+dtm.tidy = tidy(dtm)
+dem.tidy = tidy(dem.dtm)
+rep.tidy = tidy(rep.dtm)
+
+dtm.dtm = summarise(group_by(dtm.tidy, term), sum(count))
+dem.dtm = summarise(group_by(dem.tidy, term), sum(count))
+rep.dtm = summarise(group_by(rep.tidy, term), sum(count))
+```
+
+We first look at the words that most show up in President inaugural addresses. To do so, we select non-grammatical words such as nouns, verbs, and most adjectives to get the stem information. For the whole nation, no matter what party the President is, the most frequent words are almost the same. Obviously, element such as "nation", "govern", and "peopl" are the most important part of a country. 
+
+```{r, echo=FALSE, fig.height=2, fig.width=3}
+wordcloud(dtm.dtm$term, dtm.dtm$`sum(count)`,
+          scale=c(2.5,1),
+          max.words=100,
+          min.freq=1,
+          random.order=FALSE,
+          rot.per=0.5,
+          use.r.layout=T,
+          random.color=FALSE,
+          colors=brewer.pal(9,"Blues"))
+
+par(mfrow=c(1,2))
+wordcloud(dem.dtm$term, dem.dtm$`sum(count)`,
+          scale=c(2.5,0.5),
+          max.words=100,
+          min.freq=1,
+          random.order=FALSE,
+          rot.per=0.5,
+          use.r.layout=T,
+          random.color=FALSE,
+          colors=brewer.pal(9,"Greens"))
+
+wordcloud(rep.dtm$term, rep.dtm$`sum(count)`,
+          scale=c(2.5,0.5),
+          max.words=100,
+          min.freq=1,
+          random.order=FALSE,
+          rot.per=0.5,
+          use.r.layout=T,
+          random.color=FALSE,
+          colors=brewer.pal(9,"Greens"))
+
+```
+
+### Any difference between Democratic and Republican?
+
+We are going to remove the first 26 popular words from two party, as the these words are overlap about 88.5%.   
+
+Now, the President in different party looks like have different emphasis. The highest frequent words in Democratic is "Power" and in Republican is "Law".
+
+```{r, echo=FALSE}
+
+# Set 26 since there are 0.885 of first 25 words are the same, if we set more than 26, high freq and meaningful words like "power" will be deleted  
+a1 <- data.frame(dem.dtm[order(dem.dtm$`sum(count)`, decreasing = TRUE),])
+a <- a1[1:26, ]
+
+b1 <- data.frame(rep.dtm[order(rep.dtm$`sum(count)`, decreasing = TRUE),])
+b <- b1[1:26, ]
+
+# intersect(b$term, a$term) to see which words are intersected
+
+m <- a[!(a$term %in% b$term),]
+n <- b[!(b$term %in% a$term),]
+x <- rbind(m,a1[27:nrow(a1),])
+y <- rbind(n,b1[27:nrow(b1),])
+
+#a1[a1$term == "gay",]
+#b1[b1$term == "gay",]
+```
+
+
+```{r, echo=FALSE}
+par(mfrow=c(1,2))
+wordcloud(x$term, x$sum.count.,
+          scale=c(2,0.4),
+          max.words=100,
+          min.freq=1,
+          random.order=FALSE,
+          rot.per=0.1,
+          use.r.layout=T,
+          random.color=FALSE,
+          colors=brewer.pal(9,"Reds"))
+
+wordcloud(y$term, y$sum.count.,
+          scale=c(2,0.4),
+          max.words=100,
+          min.freq=1,
+          random.order=FALSE,
+          rot.per=0.1,
+          use.r.layout=T,
+          random.color=FALSE,
+          colors=brewer.pal(9,"Greens"))
+```
+
+To be more specific, we select seven words to see whether there is a word use trend over years.  
+
+```{r, echo=FALSE, fig.height=2, fig.width=3}
+word_num <- NULL 
+list = c("america", "power", "law", "war", "women","tax", "freedom")
+word_con <- function(list) {
+  for(i in 1:58) {
+    docs <- Corpus(VectorSource(speech.list$fulltext[i]))
+    docs <- tm_map(docs,content_transformer(tolower))
+    docs <- tm_map(docs, removePunctuation)
+    docs <- tm_map(docs, removeNumbers)
+    docs <- tm_map(docs, removeWords, stopwords("english"))
+    docs <- tm_map(docs, stripWhitespace)
+    docs <- tm_map(docs,stemDocument)
+    x <- as.character(docs)[1]
+    y <- strsplit(x, " ")
+    word_num[i] <- sum(y[[1]] == list)
+  }
+  return(word_num)
+}
+
+word_num <- lapply(list, word_con)
+dat <- data.frame(matrix(unlist(word_num), nrow = 58))
+dat <- cbind(speech.list$Year, dat)
+colnames(dat) <- c("Year", list) 
+
+
+ggplot(data = dat, aes(x = Year)) +
+  geom_point(aes(y = power, color = "power")) +  
+  geom_line(aes(y = power, color = "power")) +
+  geom_point(aes(y = america, color = "america")) +  
+  geom_line(aes(y = america, color = "america")) +
+  geom_point(aes(y = law, color = "law")) +  
+  geom_line(aes(y = law, color = "law")) +
+  geom_point(aes(y = war, color = "war")) +  
+  geom_line(aes(y = war, color = "war")) +
+  geom_point(aes(y = women, color = "women")) +  
+  geom_line(aes(y = women, color = "women")) +
+  geom_point(aes(y = tax, color = "tax")) +  
+  geom_line(aes(y = tax, color = "tax")) +
+  geom_point(aes(y = freedom, color = "freedom")) +  
+  geom_line(aes(y = freedom, color = "freedom"))
+
+
+```
+
+The most obvious trend is "america" became much more prevalent as time went on. It is possible that the purpose of inaugural addresses has changed over time. Maybe the President are more likely to talk foreign policy and the world as a whole, so the use of "america" to specify what th President is talking about. 
+
+The trend of law were increased and then decreased, it may explained by the process of law reform. Nowadays, the law in U.S. are more complete compare with law in 1900s. 
+
+It is interest that the frequency of the word "war" in these speeches are decreased, even though in recent years the conflicts in the Middle East is actually increased. 
+
+The first "women" been mentioned after 1900s is actually the time women in U.S. got their rights. Women get right at August 18, 1920. 
+
+
+
+
+```{r, echo=FALSE,fig.height=1, fig.width=3}
+ggplot(data = dat, aes(x = Year)) +
+  geom_point(aes(y = power, color = "power")) +  
+  geom_line(aes(y = power, color = "power")) +
+  geom_smooth(aes(y = power))
+ggplot(data = dat, aes(x = Year)) +
+  geom_point(aes(y = america, color = "america")) +  
+  geom_line(aes(y = america, color = "america")) +
+  geom_smooth(aes(y = america))
+ggplot(data = dat, aes(x = Year)) +
+  geom_point(aes(y = law, color = "law")) +  
+  geom_line(aes(y = law, color = "law")) +
+  geom_smooth(aes(y = law))
+ggplot(data = dat, aes(x = Year)) +
+  geom_point(aes(y = war, color = "war")) +  
+  geom_line(aes(y = war, color = "war")) +
+  geom_smooth(aes(y = war))
+ggplot(data = dat, aes(x = Year)) +
+  geom_point(aes(y = women, color = "women")) +  
+  geom_line(aes(y = women, color = "women")) +
+  geom_smooth(aes(y = women))
+ggplot(data = dat, aes(x = Year)) +
+  geom_point(aes(y = freedom, color = "freedom")) +  
+  geom_line(aes(y = freedom, color = "freedom")) +
+  geom_smooth(aes(y = freedom))
+
+```
+
+By comparing the two party, it also have obvious trend in it. The Republican mentioned "war" and "law" more than Democratic. 
+
+For tax part, Ronald Reagan, 1986 the year congress passed a comprehensive tax overhaul, so the frequent of tax increased in that year. 
+
+
+```{r, echo=FALSE}
+word_num <- NULL 
+list = c("war", "law", "tax", "women", "freedom")
+n <- nrow(dem.list2)
+word_con <- function(list) {
+  for(i in 1:n) {
+    docs <- Corpus(VectorSource(dem.list2$fulltext[i]))
+    docs <- tm_map(docs,content_transformer(tolower))
+    docs <- tm_map(docs, removePunctuation)
+    docs <- tm_map(docs, removeNumbers)
+    docs <- tm_map(docs, removeWords, stopwords("english"))
+    docs <- tm_map(docs, stripWhitespace)
+    docs <- tm_map(docs,stemDocument)
+    x <- as.character(docs)[1]
+    y <- strsplit(x, " ")
+    word_num[i] <- sum(y[[1]] == list)
+  }
+  return(word_num)
+}
+word_num <- lapply(list, word_con)
+dat <- data.frame(matrix(unlist(word_num), nrow = n))
+dat <- cbind(dem.list2$Year, dat)
+colnames(dat) <- c("Year", list) 
+
+```
+
+```{r, echo=FALSE}
+word_num2 <- NULL 
+list = c("war", "law", "tax", "women","freedom")
+n <- nrow(rep.list2)
+word_con2 <- function(list) {
+  for(i in 1:n) {
+    docs <- Corpus(VectorSource(rep.list2$fulltext[i]))
+    docs <- tm_map(docs,content_transformer(tolower))
+    docs <- tm_map(docs, removePunctuation)
+    docs <- tm_map(docs, removeNumbers)
+    docs <- tm_map(docs, removeWords, stopwords("english"))
+    docs <- tm_map(docs, stripWhitespace)
+    docs <- tm_map(docs,stemDocument)
+    x <- as.character(docs)[1]
+    y <- strsplit(x, " ")
+    word_num2[i] <- sum(y[[1]] == list)
+  }
+  return(word_num2)
+}
+word_num2 <- lapply(list, word_con2)
+dat2 <- data.frame(matrix(unlist(word_num2), nrow = n))
+dat2 <- cbind(rep.list2$Year, dat2)
+colnames(dat2) <- c("Year", list) 
+
+```
+
+```{r, echo=FALSE,fig.height=0.8, fig.width=3}
+
+ggplot() +
+  geom_point(aes(x = dat$Year, y = dat$war, color = "war.dem")) +  
+  geom_line(aes(x = dat$Year, y = dat$war, color = "war.dem")) +
+  geom_point(aes(x = dat2$Year, y = dat2$war, color = "war.rep")) +  
+  geom_line(aes(x = dat2$Year, y = dat2$war, color = "war.rep"))
+
+ggplot() +
+  geom_point(aes(x = dat$Year, y = dat$law, color = "law.dem")) +  
+  geom_line(aes(x = dat$Year, y = dat$law, color = "law.dem")) +
+  geom_point(aes(x = dat2$Year, y = dat2$law, color = "law.rep")) +  
+  geom_line(aes(x = dat2$Year, y = dat2$law, color = "law.rep"))
+
+ggplot() +
+  geom_point(aes(x = dat$Year, y = dat$tax, color = "tax.dem")) +  
+  geom_line(aes(x = dat$Year, y = dat$tax, color = "tax.dem")) +
+  geom_point(aes(x = dat2$Year, y = dat2$tax, color = "tax.rep")) +  
+  geom_line(aes(x = dat2$Year, y = dat2$tax, color = "tax.rep"))
+
+ggplot() +
+  geom_point(aes(x = dat$Year, y = dat$women, color = "women.dem")) +  
+  geom_line(aes(x = dat$Year, y = dat$women, color = "women.dem")) +
+  geom_point(aes(x = dat2$Year, y = dat2$women, color = "women.rep")) +  
+  geom_line(aes(x = dat2$Year, y = dat2$women, color = "women.rep"))
+
+ggplot() +
+  geom_point(aes(x = dat$Year, y = dat$freedom, color = "freedom.dem")) +  
+  geom_line(aes(x = dat$Year, y = dat$freedom, color = "freedom.dem")) +
+  geom_point(aes(x = dat2$Year, y = dat2$freedom, color = "freedom.rep")) +
+  geom_line(aes(x = dat2$Year, y = dat2$freedom, color = "freedom.rep"))
+
+```
+
+
+
+
+
+```{r, echo=FALSE,out.width = '50%'}
+use_python("/Users/yuhanzha/Downloads/anaconda/bin/python", required = FALSE)
+cnlp_init_spacy() # Python backup
+s <- speech.list[,c("President","fulltext")]
+obj <- cnlp_annotate(s, as_strings = TRUE)
+
+l <- cnlp_get_entity(obj) %>%
+ filter(entity_type == "GPE") %>%
+ group_by(entity) %>%
+ summarize(count = n())
+l[order(l$count,decreasing = TRUE),]
+
+l2 <- cnlp_get_entity(obj) %>%
+ filter(entity_type == "EVENT") %>%
+ group_by(entity) %>%
+ summarize(count = n())
+l2[order(l2$count,decreasing = TRUE),]
+
+
+```
+
+For Democratic, they are more likely link "fear", "sadness", "disgust", and "anger" to "surprise"
+
+```{r,echo = FALSE, fig.height=1.5, fig.width=1.5}
+heatmap.2(cor(dem.list3%>%select(anger:trust)), 
+          scale = "none", 
+          col = bluered(100), , margin=c(6, 6), key=F,
+          trace = "none", density.info = "none")
+heatmap.2(cor(rep.list3%>%select(anger:trust)), 
+          scale = "none", 
+          col = bluered(100), , margin=c(6, 6), key=F,
+          trace = "none", density.info = "none")
+```
+
+
+President in Democratic gave speech words less than Rep.
+
+```{r, echo=FALSE}
+plot(dem.list$Year, dem.list$Words, type = "b", col = "blue", cex = 0.5)
+lines(rep.list$Year, rep.list$Words, type = "b", col = "red", cex = 0.5)
+```
+
+### Does the words have a relationship with Presidents' ages?
+
+The curve is obvious, Presidents in age around 60 do not gave too much words in addresses. Age after 60 the words are increasing, which may explained by as people getting old, they talk more. 
+
+```{r, echo=FALSE,out.width = '50%'}
+age <- cbind(speech.list, age.list)
+summary(age$Age)
+age.dat <- data.frame(cbind(age.list, as.numeric(age$Words)))
+colnames(age.dat) <- c("President", "Age", "Words")
+hist(age.list$Age)
+
+ggplot(data = age.dat, aes(x = Age)) +
+  geom_point(aes(y = Words, color = "Words")) + 
+  geom_smooth(aes(y = Words))
+```
