@@ -3,15 +3,13 @@
 
 ![image](figs/title.jpg)
 
-### [Project Description](doc/)
-This is the first and only *individual* (as opposed to *team*) this semester. 
 
 Term: Spring 2018
 
-+ Projec title: Lorem ipsum dolor sit amet
-+ This project is conducted by [your name]
++ Projec title:Presidential inaugural addresses shows signs of time
++ This project is conducted by [Yuhan Zha]
 
-+ Project summary: [a short summary] Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
++ Project summary: When the incoming President exalts the nation and its values, presidential inaugural addresses are the best stage to tell people where they have come from, and where they are going to achieve. This project is tended to analyze all of the inaugural addresses U.S. presidents have ever made and catch up some trends and stories that fall in the data.
 
 Following [suggestions](http://nicercode.github.io/blog/2013-04-05-projects/) by [RICH FITZJOHN](http://nicercode.github.io/about/#Team) (@richfitz). This folder is orgarnized as follows.
 
@@ -23,5 +21,8 @@ proj/
 ├── figs/
 └── output/
 ```
+
+#### [See report (web page)](http://www.columbia.edu/~as3171/final_report.html)
+#### [See code (R notebook)](doc/final_report.Rmd)
 
 Please see each subfolder for a README file.
