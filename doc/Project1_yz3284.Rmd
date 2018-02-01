@@ -3,7 +3,7 @@ title: "Applied Data Science Project-1"
 output: html_notebook
 ---
 
-### Presidential inaugural addresses shows signs of time
+## Presidential Inaugural Addresses Shows Signs of Time
 
 When the incoming President exalts the nation and its values, presidential inaugural addresses are the best stage to tell people where they have come from, and where they are going to achieve. This project is tended to analyze all of the inaugural addresses U.S. presidents have ever made and catch up some trends and stories that fall in the data.
 
@@ -151,7 +151,6 @@ docs <- Corpus(VectorSource(corpus.list$snipets))
 dem.docs <- Corpus(VectorSource(dem.list$snipets))
 rep.docs <- Corpus(VectorSource(rep.list$snipets))
 ```
-### Text basic processing
 
 ```{r, echo=FALSE}
 #remove potentially problematic symbols
@@ -232,9 +231,9 @@ wordcloud(rep.dtm$term, rep.dtm$`sum(count)`,
 
 ### Any difference between Democratic and Republican?
 
-We are going to remove the first 26 popular words from two party, as the these words are overlap about 88.5%.   
+We are going to remove the first 26 popular words from two parties, as the these words are overlapped about 88.5%.   
 
-Now, the President in different party looks like have different emphasis. The highest frequent words in Democratic is "Power" and in Republican is "Law".
+Now, the Presidents in different party looks like have different emphasises. The highest frequent words in Democratic is "Power" and in Republican is "Law". 
 
 ```{r, echo=FALSE}
 
@@ -284,7 +283,7 @@ To be more specific, we select seven words to see whether there is a word use tr
 
 ```{r, echo=FALSE, fig.height=2, fig.width=3}
 word_num <- NULL 
-list = c("america", "power", "law", "war", "women","tax", "freedom")
+list = c("america", "power", "law", "war", "women","tax", "freedom", "world")
 word_con <- function(list) {
   for(i in 1:58) {
     docs <- Corpus(VectorSource(speech.list$fulltext[i]))
@@ -326,13 +325,21 @@ ggplot(data = dat, aes(x = Year)) +
 
 ```
 
-The most obvious trend is "america" became much more prevalent as time went on. It is possible that the purpose of inaugural addresses has changed over time. Maybe the President are more likely to talk foreign policy and the world as a whole, so the use of "america" to specify what th President is talking about. 
+### Why "america" became popular in recent years?
 
-The trend of law were increased and then decreased, it may explained by the process of law reform. Nowadays, the law in U.S. are more complete compare with law in 1900s. 
+The most obvious trend is "america" became much more prevalent as time went on. It is possible that the purpose of inaugural addresses has changed over time. Maybe the President are more likely to talk foreign policy and the world as a whole, so the use of "america" to specify what the President is talking about. It could be verified that the "world" frequency, which was also increased in recent years. On the other hand, it also could be explained by the term itself has become more popular in recent years, not just for presidential addresses, but in common lexicon. 
 
-It is interest that the frequency of the word "war" in these speeches are decreased, even though in recent years the conflicts in the Middle East is actually increased. 
+### What is the trend of "law"?
 
-The first "women" been mentioned after 1900s is actually the time women in U.S. got their rights. Women get right at August 18, 1920. 
+The trend of law were increased and then decreased, it may explained by the process of law reform. Nowadays, the law in U.S. are more complete compare with law in 1900s. From the plot, we could see the highest point came from President Abraham Lincoln at 1861, the second highest point came from President Benjamin Harrison, and the third highest point came from President William Howard Taft. A very interesting fact we should notice is that all of them were lawyer before became the President. Logically, we could understand why they mentioned "law" so much in their inaugural address.
+
+### Why decreased "war"? 
+
+It is interesting to note that the frequency of the word "war" appeared in a decreasing trend in recent years even though the conflicts in the Middle East is actually increased. The term mentioned in nowadays are more vogue than before, "war on drugs" or "war on poverty" are more likely spoken in recent addresses. It may because Presidents were more willing to show they are aim to achieve peace in the world. Or, the "war" in recent has been terned to military actions and police actions. 
+
+### Woman
+
+The word "women" was first appeared in President inaugural addresses at 1913. President Woodrow Wilson greatly impacted the woman suffrage movement, such that women were started to be mentioned in President inaugural speeaches. 
 
 
 
@@ -346,6 +353,10 @@ ggplot(data = dat, aes(x = Year)) +
   geom_point(aes(y = america, color = "america")) +  
   geom_line(aes(y = america, color = "america")) +
   geom_smooth(aes(y = america))
+ggplot(data = dat, aes(x = Year)) +
+  geom_point(aes(y = world, color = "world")) +  
+  geom_line(aes(y = world, color = "world")) +
+  geom_smooth(aes(y = freedom))
 ggplot(data = dat, aes(x = Year)) +
   geom_point(aes(y = law, color = "law")) +  
   geom_line(aes(y = law, color = "law")) +
@@ -365,7 +376,9 @@ ggplot(data = dat, aes(x = Year)) +
 
 ```
 
-By comparing the two party, it also have obvious trend in it. The Republican mentioned "war" and "law" more than Democratic. 
+## What is the difference between Democratic and Republican
+
+By comparing the two party, there is no obvious trends between it. 
 
 For tax part, Ronald Reagan, 1986 the year congress passed a comprehensive tax overhaul, so the frequent of tax increased in that year. 
 
@@ -398,7 +411,7 @@ colnames(dat) <- c("Year", list)
 
 ```{r, echo=FALSE}
 word_num2 <- NULL 
-list = c("war", "law", "tax", "women","freedom")
+list = c("war", "law", "tax", "women")
 n <- nrow(rep.list2)
 word_con2 <- function(list) {
   for(i in 1:n) {
@@ -428,37 +441,40 @@ ggplot() +
   geom_point(aes(x = dat$Year, y = dat$war, color = "war.dem")) +  
   geom_line(aes(x = dat$Year, y = dat$war, color = "war.dem")) +
   geom_point(aes(x = dat2$Year, y = dat2$war, color = "war.rep")) +  
-  geom_line(aes(x = dat2$Year, y = dat2$war, color = "war.rep"))
+  geom_line(aes(x = dat2$Year, y = dat2$war, color = "war.rep")) +
+  xlab("war") +
+  ylab("war")
 
 ggplot() +
   geom_point(aes(x = dat$Year, y = dat$law, color = "law.dem")) +  
   geom_line(aes(x = dat$Year, y = dat$law, color = "law.dem")) +
   geom_point(aes(x = dat2$Year, y = dat2$law, color = "law.rep")) +  
-  geom_line(aes(x = dat2$Year, y = dat2$law, color = "law.rep"))
+  geom_line(aes(x = dat2$Year, y = dat2$law, color = "law.rep")) +
+  xlab("law") +
+  ylab("law")
 
 ggplot() +
   geom_point(aes(x = dat$Year, y = dat$tax, color = "tax.dem")) +  
   geom_line(aes(x = dat$Year, y = dat$tax, color = "tax.dem")) +
   geom_point(aes(x = dat2$Year, y = dat2$tax, color = "tax.rep")) +  
-  geom_line(aes(x = dat2$Year, y = dat2$tax, color = "tax.rep"))
+  geom_line(aes(x = dat2$Year, y = dat2$tax, color = "tax.rep")) +
+  xlab("Year") +
+  ylab("tax")
 
 ggplot() +
   geom_point(aes(x = dat$Year, y = dat$women, color = "women.dem")) +  
   geom_line(aes(x = dat$Year, y = dat$women, color = "women.dem")) +
   geom_point(aes(x = dat2$Year, y = dat2$women, color = "women.rep")) +  
-  geom_line(aes(x = dat2$Year, y = dat2$women, color = "women.rep"))
+  geom_line(aes(x = dat2$Year, y = dat2$women, color = "women.rep")) +
+  xlab("women") +
+  ylab("women")
 
-ggplot() +
-  geom_point(aes(x = dat$Year, y = dat$freedom, color = "freedom.dem")) +  
-  geom_line(aes(x = dat$Year, y = dat$freedom, color = "freedom.dem")) +
-  geom_point(aes(x = dat2$Year, y = dat2$freedom, color = "freedom.rep")) +
-  geom_line(aes(x = dat2$Year, y = dat2$freedom, color = "freedom.rep"))
 
 ```
 
 
 
-
+The following are the frequency rank of Location and War in addresses.
 
 ```{r, echo=FALSE,out.width = '50%'}
 use_python("/Users/yuhanzha/Downloads/anaconda/bin/python", required = FALSE)
@@ -504,7 +520,7 @@ lines(rep.list$Year, rep.list$Words, type = "b", col = "red", cex = 0.5)
 
 ### Does the words have a relationship with Presidents' ages?
 
-The curve is obvious, Presidents in age around 60 do not gave too much words in addresses. Age after 60 the words are increasing, which may explained by as people getting old, they talk more. 
+The curve is obvious, Presidents in age around 60 do not gave too much words in addresses. Age after 60 the words are increasing, which may explained by people is going to talk more than before as getting old.
 
 ```{r, echo=FALSE,out.width = '50%'}
 age <- cbind(speech.list, age.list)
@@ -517,3 +533,32 @@ ggplot(data = age.dat, aes(x = Age)) +
   geom_point(aes(y = Words, color = "Words")) + 
   geom_smooth(aes(y = Words))
 ```
+
+
+President Obama spoke more negative words in inaugural addresses than President Trump
+
+```{r,echo = FALSE, fig.width=7}
+
+d <- get_nrc_sentiment(dem.list2[dem.list2$President == "Barack Obama",]$fulltext)
+td <- data.frame(t(d))
+names(td)[1] <- "count"
+td <- cbind("sentiment" = rownames(td), td)
+
+
+d2 <- get_nrc_sentiment(rep.list2[rep.list2$President == "Donald J. Trump",]$fulltext)
+td2 <- data.frame(t(d2))
+names(td2)[1] <- "count"
+td2 <- cbind("sentiment" = rownames(td2), td2)
+
+par(mfrow=c(1,2))
+w<-qplot(sentiment, data = td, weight = count, geom = "bar",
+      fill=sentiment)+ggtitle("Barack Obama")
+e<-qplot(sentiment, data = td2, weight = count, geom = "bar",
+      fill=sentiment)+ggtitle("Donald J. Trump")
+grid.arrange(w,e, ncol =2)
+
+```
+
+### Conclusion
+
+Every single data point is a interesting story waiting for us to explore and anlayze. From this project, we could conclude that the Presidential inaugural addresses does show signs of time. 
