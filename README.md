@@ -22,7 +22,7 @@ proj/
 └── output/
 ```
 
-#### [See report (web page)](http://www.columbia.edu/~as3171/final_report.html)
-#### [See code (R notebook)](doc/final_report.Rmd)
+#### [See report (web page)](https://cdn.rawgit.com/TZstatsADS/Spring2018-Project1-yuhanzha/48c92a1a/doc/Project1_yz3284.nb.html)
+#### [See code (R notebook)](https://github.com/TZstatsADS/Spring2018-Project1-yuhanzha/blob/master/doc/Project1_yz3284.Rmd)
 
 Please see each subfolder for a README file.
